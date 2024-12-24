@@ -1,2 +1,2 @@
-## Simple Visualization w/ Trilogy
+## Simple Visualization Trilogy
 
