@@ -1,3 +1,4 @@
 streamlit
 pytrilogy
 trilogy-public-models
+plotly
