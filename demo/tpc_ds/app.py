@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
 import plotly.express as px
-from pathlib import Path
 from trilogy_public_models import get_executor
 from trilogy.core.models import DataType
 from trilogy import Executor
@@ -10,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta, datetime
 from enums import ChartType
 from trilogy.core.enums import FunctionClass, FunctionType
-
+import re
 
 st.set_page_config(
     page_title="TPC-DS Exploration",
@@ -104,6 +102,7 @@ class GlobalConfig:
     active_dimensions: list[str] = field(default_factory=list)
     query_invalid: bool = False
     exception: ExceptionInfo = field(default_factory=ExceptionInfo)
+    limit: int = 10000
 
 
 CONFIG = GlobalConfig()
@@ -131,7 +130,7 @@ def get_valid_dimensions(root_namespace: str, active_view: ChartType, optional: 
             [
                 k.removeprefix(root_namespace + ".")
                 for k, concept in executor.environment.concepts.items()
-                if concept.datatype
+                if concept.datatype and not optional
                 in (DataType.DATE, DataType.DATETIME, DataType.INTEGER)
                 and not concept.name.startswith("_")
                 and k.startswith(root_namespace + ".")
@@ -142,7 +141,7 @@ def get_valid_dimensions(root_namespace: str, active_view: ChartType, optional: 
             [
                 k.removeprefix(root_namespace + ".")
                 for k, concept in executor.environment.concepts.items()
-                if concept.datatype
+                if concept.datatype and not optional
                 in (DataType.DATE, DataType.DATETIME, DataType.INTEGER, DataType.STRING)
                 and not concept.name.startswith("_")
                 and k.startswith(root_namespace + ".")
@@ -204,6 +203,7 @@ where
     order_string = ",\n\t".join(ordering)
     order_by = f"""
 order by {order_string}
+LIMIT {CONFIG.limit}
 """
 
     base_query += order_by
@@ -214,7 +214,7 @@ order by {order_string}
         query_text = executor.generate_sql(base_query)[-1]
     except Exception as e:
         CONFIG.query_invalid = True
-        CONFIG.exception.text = str(e)
+        CONFIG.exception.text = f"Exception: {str(e)} from query:\n```sql\n{base_query} ```"
         return
     CONFIG.query_info.trilogy_text = base_query
     CONFIG.query_info.query_text = query_text
@@ -334,8 +334,13 @@ with st.sidebar:
                     aggregation=FunctionType(aggregation_method),
                 )
             )
+    
+    limit = st.number_input("Return Limit", min_value=1, value=CONFIG.limit, key="limit")
+    CONFIG.limit = limit
 
     filter = st.text_input("Filter")
+    for dim in dimension_list:
+        filter = re.sub(f'(?<!\s)({dim})(?=\s|=)', f'{root_namespace}.{dim}', filter)
     CONFIG.filter = filter
 
     if CONFIG.active_metrics:
