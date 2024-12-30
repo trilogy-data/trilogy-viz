@@ -10,6 +10,9 @@ from dataclasses import dataclass, field
 from datetime import timedelta, datetime
 from enums import ChartType
 from trilogy.core.enums import FunctionClass, FunctionType
+from matplotlib.backends.backend_agg import RendererAgg
+_lock = RendererAgg.lock
+
 
 
 def get_trilogy_executor() -> Executor:
@@ -439,19 +442,20 @@ col = st.columns((4, 2), gap="medium")
 
 with col[0]:
     st.markdown("#### Visualization")
-    if CONFIG.exception.text:
-        st.error(CONFIG.exception.text)
-    elif CONFIG.view_type == ChartType.US_MAP:
-        choropleth = make_choropleth()
-        st.plotly_chart(choropleth, use_container_width=True)
-    elif CONFIG.view_type == ChartType.LINE_CHART:
-        line_chart = make_line_chart()
-    elif CONFIG.view_type == ChartType.BAR_CHART:
-        bar_chart = make_bar_chart()
-    elif CONFIG.view_type == ChartType.SCATTER_PLOT:
-        scatter_plot = make_scatter_plot()
-    else:
-        table = make_table()
+    with _lock:
+        if CONFIG.exception.text:
+            st.error(CONFIG.exception.text)
+        elif CONFIG.view_type == ChartType.US_MAP:
+            choropleth = make_choropleth()
+            st.plotly_chart(choropleth, use_container_width=True)
+        elif CONFIG.view_type == ChartType.LINE_CHART:
+            line_chart = make_line_chart()
+        elif CONFIG.view_type == ChartType.BAR_CHART:
+            bar_chart = make_bar_chart()
+        elif CONFIG.view_type == ChartType.SCATTER_PLOT:
+            scatter_plot = make_scatter_plot()
+        else:
+            table = make_table()
 
 with col[1]:
     st.markdown(
