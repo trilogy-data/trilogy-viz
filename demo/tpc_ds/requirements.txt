@@ -3,3 +3,4 @@ trilogy-public-models==0.1.7
 plotly==5.24.1
 duckdb==1.1.3
 altair==5.5.0
+matplotlib
