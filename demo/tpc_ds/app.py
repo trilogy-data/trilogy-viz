@@ -10,28 +10,32 @@ from dataclasses import dataclass, field
 from datetime import timedelta, datetime
 from enums import ChartType
 from trilogy.core.enums import FunctionClass, FunctionType
-from matplotlib.backends.backend_agg import RendererAgg
-_lock = RendererAgg.lock
 
 
+st.set_page_config(
+    page_title="TPC-DS Exploration",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-def get_trilogy_executor() -> Executor:
-    if "executor" not in st.session_state:
-        st.session_state["executor"] = get_executor("duckdb.tpc_ds")
-    return st.session_state["executor"]
 
+@st.cache_resource()
+def get_tpc_ds_dataset() -> Executor:
+    return get_executor("duckdb.tpc_ds")
 
 def set_defaults():
     pass
 
 
-executor: Executor = get_trilogy_executor()
+
 
 DEFAULT_CHART = ChartType.BAR_CHART
 DEFAULT_METRIC = 'item.current_price'
 DEFAULT_DIMENSION = 'date.date'
 
 # unique env per query to avoid pollutions
+executor: Executor = get_tpc_ds_dataset()
 executor.environment = executor.environment.duplicate()
 
 SKIP_NS_LIST = [
@@ -104,12 +108,6 @@ class GlobalConfig:
 
 CONFIG = GlobalConfig()
 
-st.set_page_config(
-    page_title="TPC-DS Exploration",
-    page_icon="🔍",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
 
 def get_valid_dimensions(root_namespace: str, active_view: ChartType, optional: bool = False):
@@ -442,20 +440,19 @@ col = st.columns((4, 2), gap="medium")
 
 with col[0]:
     st.markdown("#### Visualization")
-    with _lock:
-        if CONFIG.exception.text:
-            st.error(CONFIG.exception.text)
-        elif CONFIG.view_type == ChartType.US_MAP:
-            choropleth = make_choropleth()
-            st.plotly_chart(choropleth, use_container_width=True)
-        elif CONFIG.view_type == ChartType.LINE_CHART:
-            line_chart = make_line_chart()
-        elif CONFIG.view_type == ChartType.BAR_CHART:
-            bar_chart = make_bar_chart()
-        elif CONFIG.view_type == ChartType.SCATTER_PLOT:
-            scatter_plot = make_scatter_plot()
-        else:
-            table = make_table()
+    if CONFIG.exception.text:
+        st.error(CONFIG.exception.text)
+    elif CONFIG.view_type == ChartType.US_MAP:
+        choropleth = make_choropleth()
+        st.plotly_chart(choropleth, use_container_width=True)
+    elif CONFIG.view_type == ChartType.LINE_CHART:
+        line_chart = make_line_chart()
+    elif CONFIG.view_type == ChartType.BAR_CHART:
+        bar_chart = make_bar_chart()
+    elif CONFIG.view_type == ChartType.SCATTER_PLOT:
+        scatter_plot = make_scatter_plot()
+    else:
+        table = make_table()
 
 with col[1]:
     st.markdown(
